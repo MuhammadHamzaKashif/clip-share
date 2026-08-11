@@ -58,6 +58,14 @@ class PairingService {
     return hkdfSha256(pairKey, 32, info: utf8.encode('clipshare-session'));
   }
 
+  Uint8List deriveSessionKey({
+    required String myPrivateKey,
+    required String peerPublicKey,
+  }) {
+    final shared = ecdhSecret(myPrivateKey, peerPublicKey);
+    return hkdfSha256(shared, 32, salt: utf8.encode('clipshare-session'));
+  }
+
   String fingerprint(String publicKey) {
     final digest = sha256.convert(base64Decode(publicKey)).toString().toUpperCase();
     final groups = <String>[];

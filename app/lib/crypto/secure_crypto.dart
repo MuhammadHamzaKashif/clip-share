@@ -45,9 +45,9 @@ Uint8List aesGcmSeal(
     ),
   );
   final out = Uint8List(cipher.getOutputSize(plaintext.length));
-  final n = cipher.processBytes(Uint8List.fromList(plaintext), 0, plaintext.length, out, 0);
-  cipher.doFinal(out, n);
-  return out;
+  var n = cipher.processBytes(Uint8List.fromList(plaintext), 0, plaintext.length, out, 0);
+  n += cipher.doFinal(out, n);
+  return Uint8List.sublistView(out, 0, n);
 }
 
 Uint8List aesGcmOpen(
@@ -67,7 +67,7 @@ Uint8List aesGcmOpen(
     ),
   );
   final out = Uint8List(cipher.getOutputSize(sealed.length));
-  final n = cipher.processBytes(Uint8List.fromList(sealed), 0, sealed.length, out, 0);
-  cipher.doFinal(out, n);
+  var n = cipher.processBytes(Uint8List.fromList(sealed), 0, sealed.length, out, 0);
+  n += cipher.doFinal(out, n);
   return Uint8List.sublistView(out, 0, n);
 }
