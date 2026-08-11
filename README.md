@@ -2,9 +2,9 @@
 
 A shared clipboard for all your devices. Copy on one, paste on all of them.
 
-No cloud, no accounts, no data leaving your network. Each device runs a tiny
-Go daemon, finds your other devices over the LAN, and syncs what you copy.
-Think LocalSend, but just for the clipboard.
+No cloud, no accounts, no data leaving your network. The app lives in your
+tray, finds your other devices over the LAN, and syncs what you copy.
+Think a shared clipboard, no middleman.
 
 ## Why
 
@@ -19,8 +19,9 @@ devices you own, directly, no middleman.
 - Pair with a short code, only your devices connect
 - End-to-end encrypted between devices
 - Auto-connect on start, or sync only when you press start
-- One small binary per device, web UI included
-- Self-hosted, runs on anything that runs Go
+- One app for Windows, macOS, Linux and Android, tray included
+- Optional terminal client: the same sync with no UI, for minimalists
+- Self-hosted, runs entirely on your own network
 
 ## Quick start
 
