@@ -131,6 +131,47 @@ void main() {
     await server.stop();
   });
 
+  test('image clipboard items flow encrypted with dedupe', () async {
+    final code = 'K7M2XQ';
+    final server = SyncServer(
+      identity: alice.identity,
+      deviceName: 'alice pc',
+      trustStore: alice.trustStore,
+      pairingService: alice.pairingService,
+      onClipboardUpdate: (session, item) async {
+        alice.received.add(item);
+      },
+    );
+    await server.start(port: 0, pairingCode: code);
+
+    final client = SyncClient(
+      identity: bob.identity,
+      deviceName: 'bob phone',
+      trustStore: bob.trustStore,
+      pairingService: bob.pairingService,
+    );
+    await client.connect('127.0.0.1', server.port, pairingCode: code);
+
+    final pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
+        'AAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    final item = {
+      'itemId': 'img-1',
+      'kind': 'image',
+      'payload': pngBase64,
+      'ts': DateTime.now().millisecondsSinceEpoch,
+    };
+    await client.sendClipboardUpdate(item);
+    await client.sendClipboardUpdate(item);
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    expect(alice.received, hasLength(1));
+    expect(alice.received.first['kind'], 'image');
+    expect(alice.received.first['payload'], pngBase64);
+
+    await client.close();
+    await server.stop();
+  });
+
   test('reconnect with stored trust skips pairing', () async {
     final code = 'K7M2XQ';
     final server = SyncServer(

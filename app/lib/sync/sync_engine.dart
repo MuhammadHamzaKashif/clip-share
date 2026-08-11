@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:image/image.dart' as img;
 
 import '../crypto/identity_service.dart';
 import '../discovery/discovery_service.dart';
@@ -13,6 +15,9 @@ import '../platform/clipboard_watcher.dart';
 import '../platform/trust_store.dart';
 import 'sync_client.dart';
 import 'sync_server.dart';
+
+const kMaxImageEdge = 1600;
+const kMaxImageBytes = 20 * 1024 * 1024;
 
 class SyncEngine {
   SyncEngine({
@@ -158,7 +163,15 @@ class SyncEngine {
     _emitState();
   }
 
-  void _onLocalClipboardChange(String text) {
+  void _onLocalClipboardChange(ClipboardChange change) {
+    if (change.kind == ClipboardKind.text) {
+      _onLocalText(change.payload);
+    } else {
+      _onLocalImage(base64Decode(change.payload));
+    }
+  }
+
+  void _onLocalText(String text) {
     if (text.isEmpty) return;
     final itemId = sha256.convert(utf8.encode(text)).toString();
     if (!_seenItems.add(itemId)) return;
@@ -184,14 +197,71 @@ class SyncEngine {
     }
   }
 
+  void _onLocalImage(Uint8List pngBytes) {
+    if (pngBytes.isEmpty || pngBytes.length > kMaxImageBytes) return;
+    final itemId = sha256.convert(pngBytes).toString();
+    if (!_seenItems.add(itemId)) return;
+    if (_seenItems.length > 500) {
+      _seenItems.remove(_seenItems.first);
+    }
+    final wireBytes = _resizeForWire(pngBytes);
+    final item = ClipboardItem(
+      itemId: itemId,
+      kind: ItemKind.image,
+      imageBytes: Uint8List.fromList(wireBytes),
+      source: 'this device',
+      timestamp: DateTime.now(),
+    );
+    _addToHistory(item);
+    final wireItem = {
+      'itemId': itemId,
+      'kind': 'image',
+      'payload': base64Encode(wireBytes),
+      'ts': item.timestamp.millisecondsSinceEpoch,
+    };
+    for (final client in _clients.values) {
+      client.sendClipboardUpdate(wireItem);
+    }
+  }
+
+  Uint8List _resizeForWire(Uint8List pngBytes) {
+    try {
+      final decoded = img.decodePng(pngBytes);
+      if (decoded == null) return pngBytes;
+      final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+      if (longest <= kMaxImageEdge) return pngBytes;
+      final scaled = img.copyResize(decoded, width: kMaxImageEdge);
+      return Uint8List.fromList(img.encodePng(scaled));
+    } catch (_) {
+      return pngBytes;
+    }
+  }
+
   Future<void> _onIncomingItem(String fromDeviceId, Map<String, dynamic> item) async {
     final itemId = item['itemId'] as String?;
     if (itemId == null || !_seenItems.add(itemId)) return;
     if (_seenItems.length > 500) {
       _seenItems.remove(_seenItems.first);
     }
-    final payload = item['payload'] as String? ?? '';
+    final kind = item['kind'] as String? ?? 'text';
     final ts = DateTime.fromMillisecondsSinceEpoch(item['ts'] as int? ?? 0);
+    if (kind == 'image') {
+      final payload = item['payload'] as String?;
+      if (payload == null) return;
+      final bytes = base64Decode(payload);
+      _addToHistory(ClipboardItem(
+        itemId: itemId,
+        kind: ItemKind.image,
+        imageBytes: Uint8List.fromList(bytes),
+        source: _connectedNames[fromDeviceId] ?? fromDeviceId,
+        timestamp: ts,
+      ));
+      if (settings.applyOnReceive) {
+        await clipboard.setImage(bytes);
+      }
+      return;
+    }
+    final payload = item['payload'] as String? ?? '';
     _addToHistory(ClipboardItem(
       itemId: itemId,
       kind: ItemKind.text,

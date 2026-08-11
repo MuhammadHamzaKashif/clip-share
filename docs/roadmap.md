@@ -25,13 +25,14 @@ Wi-Fi.
 
 ## v0.2 - images, plus the Apple platforms
 
-- [ ] Image clipboard items (PNG), resize/compress on the wire
-- [ ] Thumbnails in the history
-- [ ] Size limits and quota guardrails
+- [x] Image clipboard items (PNG), resize/compress on the wire
+- [x] Thumbnails in the history
+- [x] Size limits and quota guardrails
 - [ ] macOS + iOS builds, signing and notarization setup
 
 **Done when:** screenshot on the laptop shows up on the phone, readable and
-fast.
+fast. (Windows side done; Linux/macOS image clipboard support is limited by
+platform tooling and follows with the builds.)
 
 ## v0.3 - files (later)
 

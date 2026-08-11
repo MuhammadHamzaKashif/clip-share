@@ -53,8 +53,10 @@ Unpaired devices are never accepted for clipboard traffic, only for pairing.
 ### `clipboard_update`
 
 - `item_id`: sha256 of the raw clipboard content, hex. Used for dedupe.
-- `kind`: `text` now, `image` in v0.2, `file` later.
-- `payload`: text as-is; image as base64 (PNG); files later as chunks.
+- `kind`: `text` or `image` (files in v0.3).
+- `payload`: text as-is; image as base64 PNG. Images over 1600 px on
+  the longest edge are resized before sending; anything over 20 MB of PNG
+  is not sent.
 - `ts`: unix ms when the source device saw the copy.
 - Sender signs the message with its private key; receivers verify before
   applying.
@@ -73,5 +75,5 @@ Unpaired devices are never accepted for clipboard traffic, only for pairing.
 ## Limits (v0)
 
 - Text items: 1 MB
-- Image items: 20 MB (v0.2)
+- Image items: 20 MB PNG, resized to 1600 px longest edge before sending
 - History: last 50 items per device

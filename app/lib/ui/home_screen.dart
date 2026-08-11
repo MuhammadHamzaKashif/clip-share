@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../crypto/identity_service.dart';
@@ -142,9 +144,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _copyItem(ClipboardItem item) async {
-    final text = item.text;
-    if (text == null || text.isEmpty) return;
-    await _engine?.clipboard.setText(text);
+    final engine = _engine;
+    if (engine == null) return;
+    if (item.kind == ItemKind.image && item.imageBytes != null) {
+      await engine.clipboard.setImage(item.imageBytes!);
+    } else if (item.text != null && item.text!.isNotEmpty) {
+      await engine.clipboard.setText(item.text!);
+    } else {
+      return;
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -467,12 +475,12 @@ class _ItemRow extends StatelessWidget {
     final time =
         '${item.timestamp.hour.toString().padLeft(2, '0')}:'
         '${item.timestamp.minute.toString().padLeft(2, '0')}';
-    final label = item.kind == ItemKind.text ? (item.text ?? '') : 'image';
+    final isImage = item.kind == ItemKind.image;
     return InkWell(
       onTap: () => onCopy(item),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         child: Row(
           children: [
             Text(
@@ -488,12 +496,14 @@ class _ItemRow extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurface),
-              ),
+              child: isImage
+                  ? _ImagePreview(bytes: item.imageBytes!)
+                  : Text(
+                      item.text ?? '',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.onSurface),
+                    ),
             ),
             Icon(
               Icons.copy_rounded,
@@ -504,6 +514,51 @@ class _ItemRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ImagePreview extends StatelessWidget {
+  const _ImagePreview({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.memory(
+            bytes,
+            height: 40,
+            width: 56,
+            fit: BoxFit.cover,
+            cacheWidth: 112,
+            gaplessPlayback: true,
+            errorBuilder: (_, _, _) => Container(
+              height: 40,
+              width: 56,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: Icon(Icons.broken_image_rounded,
+                  size: 18, color: context.clip.muted),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          'image · ${_kb(bytes.length)}',
+          style: mono(theme.textTheme.bodySmall!)
+              .copyWith(color: context.clip.muted, fontSize: 11.5),
+        ),
+      ],
+    );
+  }
+
+  String _kb(int bytes) {
+    final kb = bytes / 1024;
+    if (kb < 1024) return '${kb.toStringAsFixed(0)} KB';
+    return '${(kb / 1024).toStringAsFixed(1)} MB';
   }
 }
 
