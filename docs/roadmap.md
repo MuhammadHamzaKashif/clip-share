@@ -14,8 +14,9 @@ The core loop works end to end on real apps.
 - [x] Clipboard watching (text), hash dedupe
 - [x] Encrypted sync between two devices (AES-GCM over ECDH keys)
 - [x] App UI: device list, pair, start/stop, recent items
-- [ ] Tray icon + start at login (desktop)
-- [ ] Terminal client: `pair` + `watch`, same protocol, minimal binary
+- [x] Tray icon + start at login (desktop; tray via a small OS helper for now,
+      native tray plugin planned with signing work)
+- [x] Terminal client: `pair` + `watch`, same protocol, minimal binary
 - [x] Windows build (Linux and Android builds follow; macOS/iOS need
       signing setup)
 

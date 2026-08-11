@@ -10,6 +10,7 @@ import '../pairing/pairing_service.dart';
 import '../platform/config_store.dart';
 import '../platform/settings_service.dart';
 import '../platform/trust_store.dart';
+import '../platform/tray_helper.dart';
 import '../sync/sync_engine.dart';
 import 'pair_device_sheet.dart';
 import 'settings_screen.dart';
@@ -27,6 +28,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final ConfigStore _store;
   late final DiscoveryService _discovery;
+  final TrayHelper _tray = TrayHelper();
   SyncEngine? _engine;
   Settings _settings = Settings.defaults;
   List<Device> _devices = [];
@@ -47,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _engine?.dispose();
     _discovery.dispose();
+    _tray.stop();
     super.dispose();
   }
 
@@ -96,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       });
       await engine.start();
+      await _tray.start();
       if (settings.autoConnect) {
         await engine.startSync();
       }

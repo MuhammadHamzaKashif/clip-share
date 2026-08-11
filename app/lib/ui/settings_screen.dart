@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/settings.dart';
+import '../platform/autostart_service.dart';
 import '../platform/config_store.dart';
 import '../platform/settings_service.dart';
 
@@ -15,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final SettingsService _service;
+  final AutostartService _autostart = AutostartService();
   Settings? _settings;
   final _nameController = TextEditingController();
 
@@ -90,8 +92,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Start at login'),
                   value: settings.startAtLogin,
-                  onChanged: (v) => setState(() =>
-                      _settings = settings.copyWith(startAtLogin: v)),
+                  onChanged: (v) async {
+                    setState(() =>
+                        _settings = settings.copyWith(startAtLogin: v));
+                    await _autostart.setEnabled(v);
+                  },
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
