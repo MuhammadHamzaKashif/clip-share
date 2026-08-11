@@ -1,91 +1,101 @@
 # Setup
 
-ClipShare is self-hosted: you run one copy per device, on your own machines.
+ClipShare is self-hosted: you install the app on each device you own.
 Nothing is installed elsewhere, nothing runs in a cloud you do not control.
 
 ## Requirements
 
-- Any device that runs Go 1.22+ (Windows, macOS, Linux, Raspberry Pi, Android
-  via Termux)
+- **Desktop**: Windows 10+, macOS 11+, or Linux (any distro with a
+  compatible Flutter build)
+- **Mobile**: Android 8+, iOS 13+ (iOS builds ship once we have a Mac build
+  setup)
 - All devices on the same LAN (for now)
 - mDNS allowed on the network (home routers allow it; corporate networks may
-  block it, that is fine, then discovery can fall back to manual IPs later)
+  block it, then discovery falls back to manual IPs later)
 
-## Build from source
+## Install
 
-```sh
-git clone https://github.com/MuhammadHamzaKashif/clip-share.git
-cd clip-share
-go build -o clipshare ./cmd/clipd
-```
+Grab the app for each platform from the releases page (or build from source,
+see Contributing):
 
-That is the whole thing. A few MB, no dependencies to install.
+- Windows: installer or portable zip
+- macOS: DMG
+- Linux: AppImage / deb
+- Android: APK
 
-## Run it for the first time
+Install it on every device you want in the shared clipboard. That is the
+whole install. No server, no accounts, no extra packages.
 
-```sh
-./clipshare
-```
+## First run
 
-On first run clipd:
+1. The app asks for a device name (you can rename it later). Something like
+   "my laptop" helps you recognize devices in the list.
+2. It generates its identity keys and starts looking for other devices on
+   the network.
+3. It sits in the tray (desktop) or in the background (mobile). Open the
+   window to see what it found.
 
-1. Generates an identity keypair and a device name (you can rename it later).
-2. Starts the discovery service and the web UI.
-3. Prints the local UI address, usually `http://localhost:PORT`.
+## Pair your devices
 
-Open that address in a browser. Bookmark it.
+1. On device A, open the app, press "Pair device". A 6-character code shows.
+2. On device B, open the app, press "Pair device", type A's code, confirm
+   the fingerprint shown on both screens.
+3. Done. A and B trust each other now. Repeat for every device you want in
+   the shared clipboard.
 
-## Pair your second device
-
-1. Run clipshare on the second device the same way.
-2. Open its UI, click "Pair device", pick the first device from the list that
-   appears, and enter the pairing code the first device shows.
-3. Done. Both devices now trust each other. Repeat for every device you want
-   in the shared clipboard.
-
-Paired devices show up in the UI. Remove a device anytime; it can no longer
+Paired devices show up in the app. Remove a device anytime; it can no longer
 connect.
 
-## Config
+## Sync
 
-Everything lives in `clipshare.yaml` next to the binary (or
-`~/.config/clipshare/`). Defaults work out of the box, but you can set:
+- Default: sync starts manually with the "Start sync" button.
+- Want it automatic? Turn on "Start sync at launch" in settings. From then
+  on the app connects to paired devices the moment it starts, no clicks.
 
-- `port` - web UI port
-- `autoconnect` - connect to paired devices on start, default off, or set
-  "on" if you always want instant sync
-- `devicename` - how the device shows up to others
-- `apply-on-receive` - write synced items into the local OS clipboard, or
-  only keep them in the UI history
-- `history` - how many items to keep in the UI (default 50, 0 to disable)
+## Settings
+
+- `Device name`
+- `Start sync at launch` - auto-connect on start (default off)
+- `Start at login` - desktop only; app starts hidden in the tray
+- `Apply received items` - write synced items into the local OS clipboard,
+  or only keep them in the app history
+- `History size` - how many items to keep (default 50, 0 to disable)
+
+## Terminal client (optional)
+
+Prefer the bare minimum over any UI? Install the terminal client instead of
+or next to the app.
+
+```sh
+# download the binary for your OS from the releases page, then:
+clipshare pair          # shows your code or lets you enter one
+clipshare watch         # run in the terminal: syncs in the foreground
+clipshare watch --quiet # background-friendly: no output, exit codes only
+```
+
+Same pairing, same devices, same encryption as the app. It prints a line
+when a new item arrives. Both can run on the same machine; the hash dedupe
+keeps them from echoing each other.
+
+## Firewall / network notes
+
+- Allow the app through the firewall on private networks (the installer
+  usually asks; Windows: make sure the network is set to "private").
+- If devices are not visible, check the router: AP isolation (often on
+  guest networks) blocks device-to-device traffic and must be off.
+- Phone finding the desktop but not the other way? Check the local network
+  permission for the app in the OS privacy settings.
 
 ## Running 24/7 (recommended)
 
-The syncing device should stay on. Pick the one that is always powered:
-
-- **Windows**: run clipshare as a startup task, minimize to tray.
-- **macOS**: add a launchd agent or a login item.
-- **Linux**: systemd unit, see below.
-- **Raspberry Pi / always-on box**: systemd, run headless, no screen needed.
-
-```ini
-# /etc/systemd/system/clipshare.service
-[Unit]
-Description=ClipShare daemon
-After=network-online.target
-
-[Service]
-ExecStart=/home/pi/clipshare
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
+The syncing device should stay on. Pick the one that is always powered, turn
+on "Start at login", and it quietly does the job from the tray.
 
 ## Sizing notes
 
-- Memory: single-digit MB per daemon.
-- CPU: idle at ~0%, only active for a moment during a copy.
-- Disk: keypair plus a small history file, tens of KB, grows slowly with
-  image items.
+- Memory: a normal-size native app; a few tens of MB on desktop while open,
+  less when backgrounded. No browser engine in sight. The terminal client is
+  a few MB of RAM, single digits.
+- CPU: ~0% when idle, active only for a moment during a copy.
+- Disk: identity keys, settings and a small history file; tens of KB before
+  image items, still small after.
