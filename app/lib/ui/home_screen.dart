@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../crypto/identity_service.dart';
+import '../discovery/discovery_service.dart';
+import '../models/app_constants.dart';
 import '../models/clipboard_item.dart';
 import '../models/device.dart';
 import '../models/settings.dart';
 import '../platform/config_store.dart';
 import '../platform/settings_service.dart';
 import 'settings_screen.dart';
-
-const _demoDevices = [
-  Device(id: 'laptop', name: 'laptop', connected: true),
-  Device(id: 'pc', name: 'pc', connected: true),
-  Device(id: 'phone', name: 'phone', connected: false),
-];
 
 final _demoItems = [
   ClipboardItem(
@@ -48,7 +44,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ConfigStore _store;
+  final DiscoveryService _discovery = DiscoveryService();
   Settings _settings = Settings.defaults;
+  List<Device> _devices = [];
   bool _loaded = false;
 
   @override
@@ -58,9 +56,29 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _discovery.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    await IdentityService(_store).loadOrCreate();
+    final identity = await IdentityService(_store).loadOrCreate();
     final settings = await SettingsService(_store).load();
+    await _discovery.start(
+      deviceId: identity.deviceId,
+      deviceName: settings.deviceName,
+      publicKey: identity.publicKey,
+      port: kClipsharePort,
+    );
+    _discovery.updates.listen((devices) {
+      if (!mounted) return;
+      setState(() {
+        _devices = devices
+            .map((d) => Device(id: d.id, name: d.name, connected: true))
+            .toList();
+      });
+    });
     if (!mounted) return;
     setState(() {
       _settings = settings;
@@ -103,7 +121,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              _DeviceList(devices: _demoDevices),
+              _devices.isEmpty
+                  ? Text('no devices found on this network',
+                      style: theme.textTheme.bodySmall)
+                  : _DeviceList(devices: _devices),
               const SizedBox(height: 20),
               Row(
                 children: [
