@@ -9,9 +9,10 @@ void main() {
 }
 
 class ClipShareApp extends StatelessWidget {
-  const ClipShareApp({super.key, this.store});
+  const ClipShareApp({super.key, this.store, this.startEngine = true});
 
   final ConfigStore? store;
+  final bool startEngine;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,7 @@ class ClipShareApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      home: HomeScreen(store: store),
+      home: HomeScreen(store: store, startEngine: startEngine),
     );
   }
 }

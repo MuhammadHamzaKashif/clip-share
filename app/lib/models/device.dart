@@ -8,4 +8,7 @@ class Device {
   final String id;
   final String name;
   final bool connected;
+
+  Device copyWithConnected(bool value) =>
+      Device(id: id, name: name, connected: value);
 }

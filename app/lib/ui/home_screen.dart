@@ -6,37 +6,19 @@ import '../models/app_constants.dart';
 import '../models/clipboard_item.dart';
 import '../models/device.dart';
 import '../models/settings.dart';
+import '../pairing/pairing_service.dart';
 import '../platform/config_store.dart';
 import '../platform/settings_service.dart';
+import '../platform/trust_store.dart';
+import '../sync/sync_engine.dart';
+import 'pair_device_sheet.dart';
 import 'settings_screen.dart';
 
-final _demoItems = [
-  ClipboardItem(
-    itemId: 'a',
-    kind: ItemKind.text,
-    source: 'laptop',
-    timestamp: DateTime(2026, 8, 12, 7, 42),
-    text: 'https://example.com/some-link',
-  ),
-  ClipboardItem(
-    itemId: 'b',
-    kind: ItemKind.text,
-    source: 'phone',
-    timestamp: DateTime(2026, 8, 12, 7, 40),
-    text: 'const answer = 42;',
-  ),
-  ClipboardItem(
-    itemId: 'c',
-    kind: ItemKind.image,
-    source: 'pc',
-    timestamp: DateTime(2026, 8, 12, 7, 35),
-  ),
-];
-
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.store});
+  const HomeScreen({super.key, this.store, this.startEngine = true});
 
   final ConfigStore? store;
+  final bool startEngine;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -44,20 +26,26 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ConfigStore _store;
-  final DiscoveryService _discovery = DiscoveryService();
+  late final DiscoveryService _discovery;
+  SyncEngine? _engine;
   Settings _settings = Settings.defaults;
   List<Device> _devices = [];
+  List<ClipboardItem> _items = [];
+  Set<String> _connected = {};
+  bool _syncing = false;
   bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
     _store = widget.store ?? ConfigStore.defaultForPlatform();
+    _discovery = DiscoveryService();
     _load();
   }
 
   @override
   void dispose() {
+    _engine?.dispose();
     _discovery.dispose();
     super.dispose();
   }
@@ -65,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     final identity = await IdentityService(_store).loadOrCreate();
     final settings = await SettingsService(_store).load();
+    _settings = settings;
     await _discovery.start(
       deviceId: identity.deviceId,
       deviceName: settings.deviceName,
@@ -75,15 +64,44 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       setState(() {
         _devices = devices
-            .map((d) => Device(id: d.id, name: d.name, connected: true))
+            .map((d) => Device(
+                id: d.id,
+                name: d.name,
+                connected: _connected.contains(d.id)))
             .toList();
       });
     });
+    if (widget.startEngine) {
+      final engine = SyncEngine(
+        identity: identity,
+        settings: settings,
+        trustStore: TrustStore(_store),
+        pairingService: PairingService(identity),
+        discovery: _discovery,
+      );
+      _engine = engine;
+      engine.historyStream.listen((items) {
+        if (mounted) setState(() => _items = items);
+      });
+      engine.stateStream.listen((syncing) {
+        if (mounted) setState(() => _syncing = syncing);
+      });
+      engine.peersStream.listen((peers) {
+        if (!mounted) return;
+        setState(() {
+          _connected = peers;
+          _devices = _devices
+              .map((d) => d.copyWithConnected(peers.contains(d.id)))
+              .toList();
+        });
+      });
+      await engine.start();
+      if (settings.autoConnect) {
+        await engine.startSync();
+      }
+    }
     if (!mounted) return;
-    setState(() {
-      _settings = settings;
-      _loaded = true;
-    });
+    setState(() => _loaded = true);
   }
 
   Future<void> _openSettings() async {
@@ -93,6 +111,28 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result != null && mounted) {
       setState(() => _settings = result);
     }
+  }
+
+  Future<void> _toggleSync() async {
+    final engine = _engine;
+    if (engine == null) return;
+    if (_syncing) {
+      await engine.stopSync();
+    } else {
+      await engine.startSync();
+    }
+  }
+
+  Future<void> _pair() async {
+    final engine = _engine;
+    if (engine == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => PairDeviceSheet(
+        engine: engine,
+        devices: _discovery.devices,
+      ),
+    );
   }
 
   @override
@@ -129,15 +169,17 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   FilledButton.icon(
-                    onPressed: null,
+                    onPressed: _loaded ? _pair : null,
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Pair device'),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: const Text('Start sync'),
+                    onPressed: _loaded ? _toggleSync : null,
+                    icon: Icon(
+                        _syncing ? Icons.stop : Icons.play_arrow,
+                        size: 18),
+                    label: Text(_syncing ? 'Stop sync' : 'Start sync'),
                   ),
                 ],
               ),
@@ -145,19 +187,24 @@ class _HomeScreenState extends State<HomeScreen> {
               Text('Recent clipboard items', style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
               Expanded(
-                child: ListView.separated(
-                  itemCount: _demoItems.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) =>
-                      _ItemRow(item: _demoItems[index]),
-                ),
+                child: _items.isEmpty
+                    ? Center(
+                        child: Text('nothing synced yet',
+                            style: theme.textTheme.bodySmall))
+                    : ListView.separated(
+                        itemCount: _items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) =>
+                            _ItemRow(item: _items[index]),
+                      ),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Text('sync: off', style: _mono(theme)),
+                  Text('sync: ${_syncing ? 'on' : 'off'}', style: _mono(theme)),
                   const Spacer(),
-                  Text('history: ${_settings.historySize} items', style: _mono(theme)),
+                  Text('history: ${_settings.historySize} items',
+                      style: _mono(theme)),
                 ],
               ),
             ],

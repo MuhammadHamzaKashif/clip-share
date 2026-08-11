@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('home screen renders the main controls', (tester) async {
     final tmp = Directory.systemTemp.createTempSync('clipshare-widget');
-    await tester.pumpWidget(ClipShareApp(store: ConfigStore(tmp)));
+    await tester.pumpWidget(ClipShareApp(store: ConfigStore(tmp), startEngine: false));
     await tester.pumpAndSettle();
 
     expect(find.text('ClipShare'), findsOneWidget);
