@@ -133,6 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (engine == null) return;
     await showModalBottomSheet<void>(
       context: context,
+      constraints: const BoxConstraints(maxWidth: 520),
       builder: (_) => PairDeviceSheet(
         engine: engine,
         devices: _discovery.devices,
