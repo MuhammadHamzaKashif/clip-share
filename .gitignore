@@ -3,9 +3,15 @@ docs-internal/
 
 # build output
 bin/
-clipshare
-clipshare.exe
 *.exe
+*.apk
+build/
+
+# flutter/dart tooling
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
 
 # local runtime data (identity keys, device db)
 data/
