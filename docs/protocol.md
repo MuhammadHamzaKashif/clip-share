@@ -1,6 +1,6 @@
 # Protocol v0
 
-This describes the wire protocol between clipd daemons. It is versioned
+This describes the wire protocol between devices. It is versioned
 (`X-ClipShare-Version`) and may change until v1.
 
 ## Discovery
