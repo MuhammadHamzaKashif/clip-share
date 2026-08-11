@@ -1,39 +1,81 @@
 import 'package:flutter/material.dart';
 
+import '../crypto/identity_service.dart';
 import '../models/clipboard_item.dart';
 import '../models/device.dart';
+import '../models/settings.dart';
+import '../platform/config_store.dart';
+import '../platform/settings_service.dart';
+import 'settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+const _demoDevices = [
+  Device(id: 'laptop', name: 'laptop', connected: true),
+  Device(id: 'pc', name: 'pc', connected: true),
+  Device(id: 'phone', name: 'phone', connected: false),
+];
 
-  static const _devices = [
-    Device(id: 'laptop', name: 'laptop', connected: true),
-    Device(id: 'pc', name: 'pc', connected: true),
-    Device(id: 'phone', name: 'phone', connected: false),
-  ];
+final _demoItems = [
+  ClipboardItem(
+    itemId: 'a',
+    kind: ItemKind.text,
+    source: 'laptop',
+    timestamp: DateTime(2026, 8, 12, 7, 42),
+    text: 'https://example.com/some-link',
+  ),
+  ClipboardItem(
+    itemId: 'b',
+    kind: ItemKind.text,
+    source: 'phone',
+    timestamp: DateTime(2026, 8, 12, 7, 40),
+    text: 'const answer = 42;',
+  ),
+  ClipboardItem(
+    itemId: 'c',
+    kind: ItemKind.image,
+    source: 'pc',
+    timestamp: DateTime(2026, 8, 12, 7, 35),
+  ),
+];
 
-  static final _items = [
-    ClipboardItem(
-      itemId: 'a',
-      kind: ItemKind.text,
-      source: 'laptop',
-      timestamp: DateTime(2026, 8, 12, 7, 42),
-      text: 'https://example.com/some-link',
-    ),
-    ClipboardItem(
-      itemId: 'b',
-      kind: ItemKind.text,
-      source: 'phone',
-      timestamp: DateTime(2026, 8, 12, 7, 40),
-      text: 'const answer = 42;',
-    ),
-    ClipboardItem(
-      itemId: 'c',
-      kind: ItemKind.image,
-      source: 'pc',
-      timestamp: DateTime(2026, 8, 12, 7, 35),
-    ),
-  ];
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key, this.store});
+
+  final ConfigStore? store;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final ConfigStore _store;
+  Settings _settings = Settings.defaults;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _store = widget.store ?? ConfigStore.defaultForPlatform();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await IdentityService(_store).loadOrCreate();
+    final settings = await SettingsService(_store).load();
+    if (!mounted) return;
+    setState(() {
+      _settings = settings;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _openSettings() async {
+    final result = await Navigator.of(context).push<Settings>(
+      MaterialPageRoute(builder: (_) => SettingsScreen(store: _store)),
+    );
+    if (result != null && mounted) {
+      setState(() => _settings = result);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +91,19 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text('ClipShare', style: theme.textTheme.headlineSmall),
                   const Spacer(),
-                  Text('this device', style: _mono(theme)),
+                  Text(
+                    _settings.deviceName,
+                    style: _mono(theme),
+                  ),
+                  IconButton(
+                    onPressed: _loaded ? _openSettings : null,
+                    icon: const Icon(Icons.settings_outlined, size: 18),
+                    tooltip: 'Settings',
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
-              _DeviceList(devices: _devices),
+              _DeviceList(devices: _demoDevices),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -75,10 +125,10 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Expanded(
                 child: ListView.separated(
-                  itemCount: _items.length,
+                  itemCount: _demoItems.length,
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) =>
-                      _ItemRow(item: _items[index]),
+                      _ItemRow(item: _demoItems[index]),
                 ),
               ),
               const SizedBox(height: 12),
@@ -86,7 +136,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text('sync: off', style: _mono(theme)),
                   const Spacer(),
-                  Text('history: 50 items', style: _mono(theme)),
+                  Text('history: ${_settings.historySize} items', style: _mono(theme)),
                 ],
               ),
             ],
@@ -144,9 +194,7 @@ class _ItemRow extends StatelessWidget {
     final time =
         '${item.timestamp.hour.toString().padLeft(2, '0')}:'
         '${item.timestamp.minute.toString().padLeft(2, '0')}';
-    final label = item.kind == ItemKind.text
-        ? (item.text ?? '')
-        : 'image';
+    final label = item.kind == ItemKind.text ? (item.text ?? '') : 'image';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(

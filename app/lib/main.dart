@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'platform/config_store.dart';
 import 'ui/home_screen.dart';
 import 'ui/theme.dart';
 
@@ -8,7 +9,9 @@ void main() {
 }
 
 class ClipShareApp extends StatelessWidget {
-  const ClipShareApp({super.key});
+  const ClipShareApp({super.key, this.store});
+
+  final ConfigStore? store;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +20,7 @@ class ClipShareApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
-      home: const HomeScreen(),
+      home: HomeScreen(store: store),
     );
   }
 }

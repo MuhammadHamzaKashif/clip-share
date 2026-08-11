@@ -30,7 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  path: ^1.9.1
+  pointycastle: ^4.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
