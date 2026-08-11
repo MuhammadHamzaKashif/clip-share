@@ -7,9 +7,10 @@ are few.
 
 - Keep it minimal. If a change needs three new dependencies, argue for it
   first in an issue.
-- Standard library first. Go's stdlib covers the networking, TLS and crypto
-  we need.
-- Keep the user first: the tools runs on a Raspberry Pi, from a phone browser.
+- Few dependencies, well-maintained ones. The networking, TLS and crypto we
+  need are solved packages; everything else is app code.
+- Keep the user first: the app must run on an old Android phone and a weak
+  laptop, and stay out of the way.
 - Read [security.md](security.md) before touching anything crypto related.
   The review checklist there is mandatory for such changes.
 
@@ -17,9 +18,10 @@ are few.
 
 ```sh
 git clone https://github.com/MuhammadHamzaKashif/clip-share.git
-cd clip-share
-go build -o clipshare ./cmd/clipd
-go test ./...
+cd clip-share/app
+flutter pub get
+flutter run -d windows    # or macos / linux / android
+flutter test
 ```
 
 ## Making changes
@@ -32,7 +34,7 @@ go test ./...
    - bad: `feat(core): implement multi-modal content synchronization
      protocol with fallback semantics`
    This repo values a readable history over ceremony.
-4. Run `go test ./...` and `gofmt -l .` before pushing. Both must be clean.
+4. Run `flutter test` and `dart format .` before pushing. Both must be clean.
 5. Open a pull request. Describe what changed and why, one or two lines is
    enough, plus screenshots if the UI moved.
 
@@ -41,7 +43,8 @@ go test ./...
 - New protocol messages need protocol tests (round trip, malformed input).
 - New crypto code needs table tests for edge cases and must not weaken the
   review checklist.
-- UI changes: test in a desktop browser and a phone-sized viewport.
+- UI changes: test on desktop (tray + window) and on a phone (Android at
+  least), both light and dark theme.
 
 ## Reporting bugs
 
