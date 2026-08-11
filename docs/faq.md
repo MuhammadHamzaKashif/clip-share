@@ -29,8 +29,8 @@ opt-in relay.
 
 ## Which platforms are supported?
 
-Any device that runs Go: Windows, macOS, Linux, Raspberry Pi, Android via
-Termux. The UI is a web page, so it works in any browser, including phones.
+Real native apps: Windows, macOS and Linux on desktop, Android (and iOS
+later). Same app everywhere, no browser needed.
 
 ## What clipboard types are supported?
 
@@ -50,18 +50,25 @@ fingerprints, pairing codes mixed into key derivation. Details in
 
 ## How much resources does it use?
 
-A few MB of RAM per device, ~0% CPU when idle, tens of KB of disk. The whole
-thing is one small binary.
+A normal-size native app: a few tens of MB of RAM on desktop, less when
+backgrounded, ~0% CPU when idle, and tiny disk usage (keys, settings, a
+small history file). No browser engine sitting around.
 
 ## How do I remove a device?
 
-Open the UI on any paired device, click remove on that device's entry. It can
+Open the app on any paired device, tap remove on that device's entry. It can
 no longer connect, and its entry is deleted locally.
 
 ## What happens to my history?
 
 It lives in memory on each device (50 items by default) and is gone on
 restart until v0.4 adds optional encrypted local history.
+
+## I want even less than an app. Is there a terminal version?
+
+Yes. An optional terminal client does the same sync with no UI at all: one
+small binary, `pair` once, `watch` and it runs. See the [setup](setup.md)
+page.
 
 ## Can I use it behind a corporate network?
 
