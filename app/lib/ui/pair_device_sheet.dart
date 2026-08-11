@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../discovery/discovery_service.dart';
 import '../sync/sync_engine.dart';
+import 'theme.dart';
 
 class PairDeviceSheet extends StatefulWidget {
   const PairDeviceSheet({super.key, required this.engine, required this.devices});
@@ -14,6 +15,41 @@ class PairDeviceSheet extends StatefulWidget {
 }
 
 enum _PairMode { choose, host, join }
+
+class _PulseDot extends StatefulWidget {
+  const _PulseDot({required this.color});
+
+  final Color color;
+
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween(begin: 0.3, end: 1.0).animate(_pulse),
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
+      ),
+    );
+  }
+}
 
 class _PairDeviceSheetState extends State<PairDeviceSheet> {
   _PairMode _mode = _PairMode.choose;
@@ -98,17 +134,38 @@ class _PairDeviceSheetState extends State<PairDeviceSheet> {
           ] else if (_mode == _PairMode.host) ...[
             Text('Share this code with the device you want to pair:',
                 style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Center(
-              child: Text(
-                _shownCode ?? 'generating...',
-                style: theme.textTheme.displaySmall!
-                    .copyWith(fontFamily: 'monospace', letterSpacing: 6),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.clip.border),
+                ),
+                child: Text(
+                  _shownCode ?? '···',
+                  style: theme.textTheme.headlineMedium!.copyWith(
+                    fontFamily: 'GeistMono',
+                    letterSpacing: 10,
+                    fontWeight: FontWeight.w600,
+                    color: context.clip.accent,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            Text('Waiting for the other device...',
-                style: theme.textTheme.bodySmall),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _PulseDot(color: context.clip.accent),
+                const SizedBox(width: 10),
+                Text('waiting for the other device...',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: context.clip.muted)),
+              ],
+            ),
           ] else ...[
             Text('Which device?', style: theme.textTheme.bodyMedium),
             const SizedBox(height: 8),

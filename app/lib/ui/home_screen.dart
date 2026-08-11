@@ -14,6 +14,7 @@ import '../platform/tray_helper.dart';
 import '../sync/sync_engine.dart';
 import 'pair_device_sheet.dart';
 import 'settings_screen.dart';
+import 'theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.store, this.startEngine = true});
@@ -25,7 +26,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final ConfigStore _store;
   late final DiscoveryService _discovery;
   final TrayHelper _tray = TrayHelper();
@@ -139,79 +140,112 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _copyItem(ClipboardItem item) async {
+    final text = item.text;
+    if (text == null || text.isEmpty) return;
+    await _engine?.clipboard.setText(text);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Copied to clipboard', style: const TextStyle(fontFamily: kFontSans)),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(48, 36, 48, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ClipShare', style: theme.textTheme.headlineSmall),
-                  const Spacer(),
-                  Text(
-                    _settings.deviceName,
-                    style: _mono(theme),
+                  _Header(
+                    deviceName: _settings.deviceName,
+                    syncing: _syncing,
+                    onSettings: _loaded ? _openSettings : null,
                   ),
-                  IconButton(
-                    onPressed: _loaded ? _openSettings : null,
-                    icon: const Icon(Icons.settings_outlined, size: 18),
-                    tooltip: 'Settings',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _devices.isEmpty
-                  ? Text('no devices found on this network',
-                      style: theme.textTheme.bodySmall)
-                  : _DeviceList(devices: _devices),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: _loaded ? _pair : null,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Pair device'),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: _loaded ? _toggleSync : null,
-                    icon: Icon(
-                        _syncing ? Icons.stop : Icons.play_arrow,
-                        size: 18),
-                    label: Text(_syncing ? 'Stop sync' : 'Start sync'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-              Text('Recent clipboard items', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Expanded(
-                child: _items.isEmpty
-                    ? Center(
-                        child: Text('nothing synced yet',
-                            style: theme.textTheme.bodySmall))
-                    : ListView.separated(
-                        itemCount: _items.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) =>
-                            _ItemRow(item: _items[index]),
+                  const SizedBox(height: 44),
+                  _SectionLabel('Devices'),
+                  const SizedBox(height: 10),
+                  _devices.isEmpty ? const _EmptyDevices() : _DeviceList(devices: _devices),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _loaded ? _toggleSync : null,
+                        icon: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          transitionBuilder: (child, anim) =>
+                              ScaleTransition(scale: anim, child: child),
+                          child: Icon(
+                            _syncing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+                            key: ValueKey(_syncing),
+                            size: 18,
+                          ),
+                        ),
+                        label: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          child: Text(_syncing ? 'Stop sync' : 'Start sync',
+                              key: ValueKey(_syncing)),
+                        ),
                       ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text('sync: ${_syncing ? 'on' : 'off'}', style: _mono(theme)),
-                  const Spacer(),
-                  Text('history: ${_settings.historySize} items',
-                      style: _mono(theme)),
+                      const SizedBox(width: 12),
+                      OutlinedButton.icon(
+                        onPressed: _loaded ? _pair : null,
+                        icon: const Icon(Icons.add_rounded, size: 18),
+                        label: const Text('Pair device'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    children: [
+                      const _SectionLabel('Recent'),
+                      const Spacer(),
+                      Text(
+                        '${_items.length}',
+                        style: mono(Theme.of(context).textTheme.bodySmall!)
+                            .copyWith(color: context.clip.muted),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _items.isEmpty
+                          ? const _EmptyHistory()
+                          : _HistoryList(items: _items, onCopy: _copyItem),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(color: context.clip.border),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Text(
+                        'sync ${_syncing ? 'on' : 'off'}',
+                        style: mono(Theme.of(context).textTheme.bodySmall!)
+                            .copyWith(color: context.clip.muted),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'history: ${_settings.historySize} items',
+                        style: mono(Theme.of(context).textTheme.bodySmall!)
+                            .copyWith(color: context.clip.muted),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -219,8 +253,127 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-TextStyle _mono(ThemeData theme) {
-  return theme.textTheme.bodySmall!.copyWith(fontFamily: 'monospace');
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.deviceName,
+    required this.syncing,
+    required this.onSettings,
+  });
+
+  final String deviceName;
+  final bool syncing;
+  final VoidCallback? onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text('ClipShare', style: Theme.of(context).textTheme.headlineSmall),
+        const Spacer(),
+        _StatusChip(syncing: syncing),
+        const SizedBox(width: 14),
+        Text(
+          deviceName,
+          style: mono(Theme.of(context).textTheme.bodySmall!)
+              .copyWith(color: context.clip.muted),
+        ),
+        const SizedBox(width: 6),
+        IconButton(
+          onPressed: onSettings,
+          icon: const Icon(Icons.tune_rounded, size: 19),
+          tooltip: 'Settings',
+          color: context.clip.muted,
+          iconSize: 19,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusChip extends StatefulWidget {
+  const _StatusChip({required this.syncing});
+
+  final bool syncing;
+
+  @override
+  State<_StatusChip> createState() => _StatusChipState();
+}
+
+class _StatusChipState extends State<_StatusChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.syncing) _pulse.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StatusChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.syncing && !oldWidget.syncing) {
+      _pulse.repeat(reverse: true);
+    } else if (!widget.syncing && oldWidget.syncing) {
+      _pulse.stop();
+      _pulse.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = widget.syncing ? 'syncing' : 'idle';
+    final color = widget.syncing ? context.clip.ok : context.clip.muted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: widget.syncing ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FadeTransition(
+            opacity: Tween(begin: 0.35, end: 1.0).animate(_pulse),
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: mono(theme.textTheme.bodySmall!)
+                .copyWith(color: color, fontSize: 11.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(label, style: sectionLabel(Theme.of(context)));
+  }
 }
 
 class _DeviceList extends StatelessWidget {
@@ -230,35 +383,82 @@ class _DeviceList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       children: [
-        for (final device in devices)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
-              children: [
-                Icon(
-                  device.connected ? Icons.check_circle : Icons.radio_button_off,
-                  size: 16,
-                  color: device.connected
-                      ? Colors.green.shade600
-                      : theme.colorScheme.outline,
-                ),
-                const SizedBox(width: 10),
-                Text(device.name, style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
+        for (var i = 0; i < devices.length; i++) ...[
+          if (i > 0) Divider(color: context.clip.border),
+          _DeviceRow(device: devices[i]),
+        ],
       ],
     );
   }
 }
 
+class _DeviceRow extends StatelessWidget {
+  const _DeviceRow({required this.device});
+
+  final Device device;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: device.connected ? context.clip.ok : context.clip.muted,
+              boxShadow: device.connected
+                  ? [
+                      BoxShadow(
+                        color: context.clip.ok.withValues(alpha: 0.35),
+                        blurRadius: 6,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(device.name, style: theme.textTheme.bodyMedium),
+          ),
+          Text(
+            device.connected ? 'connected' : 'nearby',
+            style: mono(theme.textTheme.bodySmall!)
+                .copyWith(color: context.clip.muted, fontSize: 11.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryList extends StatelessWidget {
+  const _HistoryList({required this.items, required this.onCopy});
+
+  final List<ClipboardItem> items;
+  final void Function(ClipboardItem) onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: items.length,
+      separatorBuilder: (_, _) => Divider(color: context.clip.border),
+      itemBuilder: (context, index) => _ItemRow(item: items[index], onCopy: onCopy),
+    );
+  }
+}
+
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item});
+  const _ItemRow({required this.item, required this.onCopy});
 
   final ClipboardItem item;
+  final void Function(ClipboardItem) onCopy;
 
   @override
   Widget build(BuildContext context) {
@@ -267,18 +467,107 @@ class _ItemRow extends StatelessWidget {
         '${item.timestamp.hour.toString().padLeft(2, '0')}:'
         '${item.timestamp.minute.toString().padLeft(2, '0')}';
     final label = item.kind == ItemKind.text ? (item.text ?? '') : 'image';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Text('$time  ${item.source}', style: _mono(theme)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              label,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+    return InkWell(
+      onTap: () => onCopy(item),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        child: Row(
+          children: [
+            Text(
+              time,
+              style: mono(theme.textTheme.bodySmall!)
+                  .copyWith(color: context.clip.muted, fontSize: 11.5),
             ),
+            const SizedBox(width: 12),
+            Text(
+              item.source,
+              style: mono(theme.textTheme.bodySmall!)
+                  .copyWith(color: context.clip.accent, fontSize: 11.5),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurface),
+              ),
+            ),
+            Icon(
+              Icons.copy_rounded,
+              size: 15,
+              color: context.clip.muted.withValues(alpha: 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyDevices extends StatelessWidget {
+  const _EmptyDevices();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 34, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(kRadiusSurface),
+        border: Border.all(color: context.clip.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: context.clip.accent.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.wifi_tethering_rounded,
+                size: 22, color: context.clip.accent),
+          ),
+          const SizedBox(height: 14),
+          Text('No devices yet',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(
+            'Pair your laptop or phone to build\nyour shared clipboard.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: context.clip.muted, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyHistory extends StatelessWidget {
+  const _EmptyHistory();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.content_paste_rounded,
+              size: 28, color: context.clip.muted.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text(
+            'Nothing here yet',
+            style: theme.textTheme.bodyMedium?.copyWith(color: context.clip.muted),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Copy something on any device and it will appear here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: context.clip.muted),
           ),
         ],
       ),
