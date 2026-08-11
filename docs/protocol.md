@@ -30,11 +30,14 @@ Unpaired devices are never accepted for clipboard traffic, only for pairing.
 
 ## Transport
 
-- WebSocket over TLS (wss), self-signed certs generated at first run.
-- The TLS key fingerprint is pinned to the trusted device list after
-  pairing. First connection to a newly paired device verifies the
-  fingerprint the code flow recorded.
-- All messages are JSON, UTF-8, framed as WebSocket text messages.
+- WebSocket (ws) over a plain TCP connection, JSON text frames, UTF-8.
+- Confidentiality and integrity live at the message layer: every payload is
+  encrypted with AES-256-GCM using a session key derived from ECDH
+  (P-256) + HKDF-SHA256, with the sender's device id as authenticated data.
+- The pairing code never crosses the wire; it is mixed into the pairing key
+  derivation and proven via HMAC.
+- TLS on the channel is planned for v1 hardening; the application-layer
+  encryption already protects content in transit on the LAN.
 
 ## Messages
 

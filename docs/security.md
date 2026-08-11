@@ -29,16 +29,19 @@ Out of scope (assumed trusted):
 
 ## Encryption
 
-- Pairing: ECDH key exchange hardened by the pairing code. An attacker who
-  records the pairing exchange but does not know the code cannot derive the
-  session secret (the code is never sent, it is mixed into the key
-  derivation).
-- In transit: TLS with self-signed certs, fingerprints pinned to the paired
-  device list. After pairing, a MITM that was not there during pairing fails
-  the fingerprint check.
+- Pairing: ECDH (P-256) key exchange hardened by the pairing code. An
+  attacker who records the pairing exchange but does not know the code
+  cannot derive the pairing key (the code is never sent, it is mixed into
+  the key derivation and proven with an HMAC).
+- In transit: every message payload is AES-256-GCM encrypted with a session
+  key derived from ECDH + HKDF. The sender's device id is bound into the
+  authenticated data, so a message cannot be replayed onto another device.
+  After pairing, a stranger on the network sees only ciphertext.
 - At rest: the identity keypair and device list are stored locally. The
-  clipboard history in the UI is not persisted unencrypted beyond the
-  in-memory list (see Roadmap for encrypted history).
+  clipboard history in the UI is held in memory only (see Roadmap for
+  encrypted history).
+- TLS on the wire is planned for v1 hardening; application-layer encryption
+  is the v0.1 guarantee.
 
 ## Pairing code rules
 
@@ -74,9 +77,9 @@ respond within 48 hours.
 
 ## Verification checklist (for reviewers)
 
-- [ ] TLS verification uses pinned fingerprints, not the system CA store
-- [ ] Pairing code participates in key derivation
+- [ ] Pairing code participates in key derivation and is proven via HMAC
 - [ ] All messages from unpaired peers are rejected
-- [ ] `clipboard_update` signatures are verified on receive
+- [ ] Message payloads are AES-256-GCM encrypted with ECDH-derived keys
+- [ ] Encrypted payloads bind the sender device id as authenticated data
 - [ ] No clipboard content is ever logged
 - [ ] History is bounded (50 items) and purgeable

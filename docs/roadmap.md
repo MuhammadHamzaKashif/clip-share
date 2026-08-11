@@ -8,16 +8,16 @@ files after. Everything stays peer-to-peer and self-hosted.
 The core loop works end to end on real apps.
 
 - [x] Docs: architecture, setup, protocol, security, design
-- [ ] App skeleton: Flutter app, theme, device name flow
-- [ ] mDNS discovery, manual IP fallback
-- [ ] Pairing with 6-char codes
-- [ ] Clipboard watching (text), hash dedupe
-- [ ] Encrypted sync between two devices
-- [ ] App UI: device list, pair, start/stop, recent items
+- [x] App skeleton: Flutter app, theme, device name flow
+- [x] mDNS discovery, manual IP fallback (manual IP not yet)
+- [x] Pairing with 6-char codes
+- [x] Clipboard watching (text), hash dedupe
+- [x] Encrypted sync between two devices (AES-GCM over ECDH keys)
+- [x] App UI: device list, pair, start/stop, recent items
 - [ ] Tray icon + start at login (desktop)
 - [ ] Terminal client: `pair` + `watch`, same protocol, minimal binary
-- [ ] Windows + Linux + Android builds (macOS and iOS need signing setup,
-      they follow in v0.2)
+- [x] Windows build (Linux and Android builds follow; macOS/iOS need
+      signing setup)
 
 **Done when:** copy a URL on the PC, paste it on the phone, both on the same
 Wi-Fi.

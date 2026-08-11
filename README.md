@@ -25,7 +25,16 @@ devices you own, directly, no middleman.
 
 ## Quick start
 
-Coming with v0.1. For now, see [Setup](docs/setup.md) for what's planned.
+1. Install the app on each device (Windows/Linux/Android builds; macOS and
+   iOS follow later).
+2. First run: give the device a name.
+3. On the first device press "Pair device" then "Show my code".
+4. On the second device press "Pair device", pick the first device from the
+   list, type the code. Done.
+5. Press "Start sync" (or enable "Start sync at launch" in settings). Copy
+   on one device, paste on the others.
+
+Full details in [Setup](docs/setup.md).
 
 ## Docs
 
