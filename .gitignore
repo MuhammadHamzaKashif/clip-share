@@ -1,0 +1,23 @@
+# internal docs, keep them off the repo
+docs-internal/
+
+# build output
+bin/
+clipshare
+clipshare.exe
+*.exe
+
+# local runtime data (identity keys, device db)
+data/
+*.db
+*.sqlite
+
+# logs
+*.log
+
+# editor and OS cruft
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
