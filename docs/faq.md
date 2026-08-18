@@ -34,7 +34,8 @@ later). Same app everywhere, no browser needed.
 
 ## What clipboard types are supported?
 
-Text in v0.1, images in v0.2, files later. See the [roadmap](roadmap.md).
+Text and images now, files later. Images are resized to 1600 px on the wire.
+See the [roadmap](roadmap.md).
 
 ## What if two devices copy at the same time?
 

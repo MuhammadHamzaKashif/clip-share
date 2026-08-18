@@ -95,7 +95,8 @@ on "Start at login", and it quietly does the job from the tray.
 
 - Memory: a normal-size native app; a few tens of MB on desktop while open,
   less when backgrounded. No browser engine in sight. The terminal client is
-  a few MB of RAM, single digits.
-- CPU: ~0% when idle, active only for a moment during a copy.
+  a few MB of RAM, single digits. APK is ~52 MB on Android.
+- CPU: ~0% when idle, active only for a moment during a copy or image
+  encode.
 - Disk: identity keys, settings and a small history file; tens of KB before
   image items, still small after.

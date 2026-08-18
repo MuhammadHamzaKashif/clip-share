@@ -19,6 +19,7 @@ The core loop works end to end on real apps.
 - [x] Terminal client: `pair` + `watch`, same protocol, minimal binary
 - [x] Windows build (Linux and Android builds follow; macOS/iOS need
       signing setup)
+- [x] Android build (signed APK at app/build/app/outputs/flutter-apk/)
 
 **Done when:** copy a URL on the PC, paste it on the phone, both on the same
 Wi-Fi.
